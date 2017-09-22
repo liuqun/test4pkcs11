@@ -10,8 +10,17 @@ LIBS += -ldl -lpthread
 .PHONY: all
 all: config.h $(EXEC)
 
+print-current-tokens: print-current-tokens.o pkcs11-api-loader.o
+	$(LINK.o) -o $@ $^ $(LIBS)
+
 %: %.c
 	$(LINK.c) -o $@ $^ $(LIBS)
+
+%.o: %.c %.h
+	$(COMPILE.c) -o $@ $<
+
+%.o: %.c
+	$(COMPILE.c) -o $@ $<
 
 .PHONY: clean
 clean:

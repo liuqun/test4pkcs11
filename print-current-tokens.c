@@ -17,6 +17,7 @@
 #endif
 
 #include <opencryptoki/pkcs11.h>
+#include "pkcs11-api-loader.h"
 
 #define CFG_SLOT        0x0004
 #define CFG_PKCS_INFO   0X0008
@@ -28,16 +29,24 @@ CK_RV get_slot_list(int, CK_CHAR_PTR);
 CK_RV display_slot_info(void);
 CK_RV display_token_info(void);
 
-void *dll_ptr;
 CK_FUNCTION_LIST_PTR    function_ptr = NULL;
 CK_SLOT_ID_PTR          slot_list = NULL;
 CK_ULONG                slot_count = 0;
 int in_slot;
 
+pkcs11_api_t *api;
+
 int main(int argc, char *argv[])
 {
     CK_FLAGS flags = 0;         /* Bit Mask for what options were passed in */
     CK_CHAR_PTR slot = NULL;    /* The PKCS slot number */
+
+    api = new_pkcs11_api_instance("/usr/lib/opencryptoki/libopencryptoki.so");
+    if (!api) {
+        fprintf(stderr, "Error initializing the PKCS11 library\n");
+        exit(0xFF);
+    }
+    function_ptr = api->functions;
 
     /* Load the PKCS11 library */
     init();
@@ -51,6 +60,12 @@ int main(int argc, char *argv[])
 
     /* We are done, free the memory we may have allocated */
     free(slot);
+
+    /* Clean up everything except the api instance */
+    cleanup();
+
+    /* Close DLL instance before exit */
+    delete_pkcs11_api_instance(api);
     return 0;
 }
 
@@ -147,29 +162,6 @@ CK_RV display_token_info(void)
 CK_RV init(void)
 {
     CK_RV rc;           /* Return Code */
-    void (*sym_ptr)();   /* Pointer for the DLL */
-
-    /* Open the PKCS11 API Shared Library, and inform the user if there is an
-     * error
-     */
-    dll_ptr = dlopen("/usr/lib/opencryptoki/libopencryptoki.so", RTLD_NOW);
-    if (!dll_ptr) {
-        rc = errno;
-        printf("Error loading PKCS#11 library: 0x%X\n", (int)rc);
-        fflush(stdout);
-        return rc;
-    }
-
-    /* Get the list of the PKCS11 functions this token supports */
-    sym_ptr = (void (*) ())dlsym(dll_ptr, "C_GetFunctionList");
-    if (!sym_ptr) {
-        rc = errno;
-        printf("Error getting function list: 0x%X\n", (int)rc);
-        fflush(stdout);
-        cleanup();
-    }
-
-    sym_ptr(&function_ptr);
 
     /* If we get here, we know the slot manager is running and we can use PKCS11
      * calls, so we will execute the PKCS11 Initialize command.
@@ -179,9 +171,10 @@ CK_RV init(void)
         printf("Error initializing the PKCS11 library: 0x%X\n", (int)rc);
         fflush(stdout);
         cleanup();
+        exit(0xFF);
     }
 
-    return CKR_OK;
+    return rc;
 }
 
 CK_RV cleanup(void)
@@ -193,8 +186,5 @@ CK_RV cleanup(void)
      */
     free(slot_list);
     rc = function_ptr->C_Finalize(NULL);
-    if (dll_ptr)
-        dlclose(dll_ptr);
-
-    exit(rc);
+    return(rc);
 }
