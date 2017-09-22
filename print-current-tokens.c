@@ -10,7 +10,13 @@
 #include <errno.h>
 #include <stdio.h>
 #include <dlfcn.h>
-#include <pkcs11types.h>
+
+#include "config.h"
+#ifndef HAVE_OPENCRYPTOKI_PKCS11_H
+#error // 找不到 opencryptoki/pkcs11.h
+#endif
+
+#include <opencryptoki/pkcs11.h>
 
 #define CFG_SLOT        0x0004
 #define CFG_PKCS_INFO   0X0008
