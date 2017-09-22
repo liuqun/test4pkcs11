@@ -36,7 +36,6 @@ int in_slot;
 
 int main(int argc, char *argv[])
 {
-    CK_RV rc;                   /* Return Code */
     CK_FLAGS flags = 0;         /* Bit Mask for what options were passed in */
     CK_CHAR_PTR slot = NULL;    /* The PKCS slot number */
 
@@ -52,7 +51,7 @@ int main(int argc, char *argv[])
 
     /* We are done, free the memory we may have allocated */
     free(slot);
-    return rc;
+    return 0;
 }
 
 CK_RV get_slot_list(int cond, CK_CHAR_PTR slot)
