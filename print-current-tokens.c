@@ -26,13 +26,12 @@
 CK_RV print_slot_info(CK_SLOT_INFO slot_info);
 CK_RV print_token_info(CK_TOKEN_INFO token_info);
 
-CK_FUNCTION_LIST_PTR    function_ptr = NULL;
-
-pkcs11_api_t *api;
-
 int main(int argc, char *argv[])
 {
     CK_RV rc;
+    CK_FUNCTION_LIST_PTR function_ptr = NULL;
+    pkcs11_api_t *api;
+
     api = new_pkcs11_api_instance("/usr/lib/opencryptoki/libopencryptoki.so");
     if (!api) {
         fprintf(stderr, "Error initializing the PKCS11 library\n");
