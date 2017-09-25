@@ -37,6 +37,9 @@ typedef struct pkcs11_api_t {
 } pkcs11_api_t;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  * Create a pkcs11_api_t instance.
  *
@@ -50,4 +53,7 @@ pkcs11_api_t *new_pkcs11_api_instance(const char *file);
  */
 void delete_pkcs11_api_instance(pkcs11_api_t *instance);
 
+#ifdef __cplusplus
+}; // end of extern "C"
+#endif
 #endif /* PKCS11_API_LOADER_H_ */
