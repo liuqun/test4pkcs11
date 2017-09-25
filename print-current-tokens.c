@@ -26,21 +26,15 @@
 CK_RV init(void);
 CK_RV cleanup(void);
 CK_RV get_slot_list(int, CK_CHAR_PTR);
-CK_RV display_slot_info(void);
-CK_RV display_token_info(void);
+CK_RV display_slot_info(CK_SLOT_ID id);
+CK_RV display_token_info(CK_SLOT_ID id);
 
 CK_FUNCTION_LIST_PTR    function_ptr = NULL;
-CK_SLOT_ID_PTR          slot_list = NULL;
-CK_ULONG                slot_count = 0;
-int in_slot;
 
 pkcs11_api_t *api;
 
 int main(int argc, char *argv[])
 {
-    CK_FLAGS flags = 0;         /* Bit Mask for what options were passed in */
-    CK_CHAR_PTR slot = NULL;    /* The PKCS slot number */
-
     api = new_pkcs11_api_instance("/usr/lib/opencryptoki/libopencryptoki.so");
     if (!api) {
         fprintf(stderr, "Error initializing the PKCS11 library\n");
@@ -51,15 +45,33 @@ int main(int argc, char *argv[])
     /* Load the PKCS11 library */
     init();
 
-    /* Get the slot list and indicate if a slot number was passed in or not */
-    get_slot_list(flags, slot);
+    do {
+        CK_RV rc;
+        CK_ULONG slot_count = 0;
 
-    /* Display the current token and slot info */
-    display_token_info();
-    display_slot_info();
+        /* Find out how many tokens are present in the slots */
+        rc = function_ptr->C_GetSlotList(TRUE, NULL_PTR, &slot_count);
+        if (rc != CKR_OK) {
+            printf("Error getting number of slots: 0x%X\n", (int)rc);
+            break;
+        }
+        if (slot_count > 0) {
+            int i;
+            CK_SLOT_ID_PTR slot_list = NULL;
 
-    /* We are done, free the memory we may have allocated */
-    free(slot);
+            slot_list = (CK_SLOT_ID_PTR) malloc(slot_count * sizeof(CK_SLOT_ID));
+            rc = function_ptr->C_GetSlotList(TRUE, slot_list, &slot_count);
+
+            /* Display token info and slot info for each slot ID in "slot_list" */
+            for (i = 0; i < slot_count; i++) {
+                display_token_info(slot_list[i]);
+                display_slot_info(slot_list[i]);
+            }
+
+            free(slot_list);
+            slot_list = NULL;
+        }
+    } while (0);
 
     /* Clean up everything except the api instance */
     cleanup();
@@ -69,93 +81,70 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-CK_RV get_slot_list(int cond, CK_CHAR_PTR slot)
-{
-    CK_RV rc;   /* Return code */
-
-    /* Find out how many tokens are present in the slots */
-    rc = function_ptr->C_GetSlotList(TRUE, NULL_PTR, &slot_count);
-    if (rc != CKR_OK) {
-        printf("Error getting number of slots: 0x%X\n", (int)rc);
-        return rc;
-    }
-
-    /* Allocate enough space for the slots information */
-    slot_list = (CK_SLOT_ID_PTR) malloc(slot_count*sizeof(CK_SLOT_ID));
-
-    rc = function_ptr->C_GetSlotList(TRUE, slot_list, &slot_count);
-    if (rc != CKR_OK) {
-        printf("Error getting slot list: 0x%X\n", (int)rc);
-        return rc;
-    }
-
-    return rc;
-}
-
-CK_RV display_slot_info(void)
+CK_RV display_slot_info(CK_SLOT_ID id)
 {
     CK_RV           rc;         /* Return Code */
     CK_SLOT_INFO    slot_info;   /* Structure to hold slot information */
-    int             lcv;        /* Loop Control Variable */
 
-    for (lcv = 0; lcv < slot_count; lcv++) {
-        /* Get the info for the slot we are examining and store in slot_info */
-        rc = function_ptr->C_GetSlotInfo(slot_list[lcv], &slot_info);
-        if (rc != CKR_OK) {
-            printf("Error getting the slot info: 0x%X\n", (int)rc);
-            return rc;
+    /* Get the info for the slot we are examining and store in "slot_info" */
+    rc = function_ptr->C_GetSlotInfo(id, &slot_info);
+    if (rc != CKR_OK) {
+        printf("Error getting the slot info: 0x%X\n", (int)rc);
+        if (CKR_SLOT_ID_INVALID == rc) {
+            fprintf(stdout, "Invalid slot id: %d\n", (int)id);
         }
-
-        /* Display the slot information */
-        printf("Slot #%d Info\n", (int)slot_list[lcv]);
-        printf("\tDescription: %.64s\n", slot_info.slotDescription);
-        printf("\tManufacturer: %.32s\n", slot_info.manufacturerID);
-        printf("\tFlags: 0x%X\n", (int)slot_info.flags);
-        printf("\tHardware Version: %d.%d\n", slot_info.hardwareVersion.major,
-                                              slot_info.hardwareVersion.minor);
-        printf("\tFirmware Version: %d.%d\n", slot_info.firmwareVersion.major,
-                                              slot_info.firmwareVersion.minor);
+        return rc;
     }
+
+    /* Display the slot information */
+    printf("Slot #%d Info\n", (int)id);
+    printf("\tDescription: %.64s\n", slot_info.slotDescription);
+    printf("\tManufacturer: %.32s\n", slot_info.manufacturerID);
+    printf("\tFlags: 0x%X\n", (int)slot_info.flags);
+    printf("\tHardware Version: %d.%d\n", slot_info.hardwareVersion.major,
+                                          slot_info.hardwareVersion.minor);
+    printf("\tFirmware Version: %d.%d\n", slot_info.firmwareVersion.major,
+                                          slot_info.firmwareVersion.minor);
     return CKR_OK;
 }
 
-CK_RV display_token_info(void)
+CK_RV display_token_info(CK_SLOT_ID id)
 {
     CK_RV           rc;         /* Return Code */
     CK_TOKEN_INFO   token_info;  /* Structure to hold token information */
-    int             lcv;        /* Loop Control Variable */
 
-    for (lcv = 0; lcv < slot_count; lcv++) {
-        /* Get the Token info for each slot in the system */
-        rc = function_ptr->C_GetTokenInfo(slot_list[lcv], &token_info);
-        if (rc != CKR_OK) {
-            printf("Error getting token info: 0x%X\n", (int)rc);
-            return rc;
+    /* Get the info for the token in the slot, and store in "token_info" */
+    rc = function_ptr->C_GetTokenInfo(id, &token_info);
+    if (rc != CKR_OK) {
+        printf("Error getting token info: 0x%X\n", (int)rc);
+        if (CKR_SLOT_ID_INVALID == rc) {
+            fprintf(stdout, "Invalid slot id: %d\n", (int)id);
         }
-
-        /* Display the token information */
-        printf("Token #%d Info:\n", (int)slot_list[lcv]);
-        printf("\tLabel: %.32s\n", token_info.label);
-        printf("\tManufacturer: %.32s\n", token_info.manufacturerID);
-        printf("\tModel: %.16s\n", token_info.model);
-        printf("\tSerial Number: %.16s\n", token_info.serialNumber);
-        printf("\tFlags: 0x%X\n", (int)token_info.flags);
-        printf("\tSessions: %d/%d\n", (int)token_info.ulSessionCount,
-                                      (int)token_info.ulMaxSessionCount);
-        printf("\tR/W Sessions: %d/%d\n", (int)token_info.ulRwSessionCount,
-                                          (int)token_info.ulMaxRwSessionCount);
-        printf("\tPIN Length: %d-%d\n", (int)token_info.ulMinPinLen,
-                                        (int)token_info.ulMaxPinLen);
-        printf("\tPublic Memory: 0x%X/0x%X\n", (int)token_info.ulFreePublicMemory,
-                                               (int)token_info.ulTotalPublicMemory);
-        printf("\tPrivate Memory: 0x%X/0x%X\n", (int)token_info.ulFreePrivateMemory,
-                                               (int)token_info.ulTotalPrivateMemory);
-        printf("\tHardware Version: %d.%d\n", (int)token_info.hardwareVersion.major,
-                                              (int)token_info.hardwareVersion.minor);
-        printf("\tFirmware Version: %d.%d\n", token_info.firmwareVersion.major,
-                                              token_info.firmwareVersion.minor);
-        printf("\tTime: %.16s\n", token_info.utcTime);
+        return rc;
     }
+
+    /* Display the token information */
+    printf("Token #%d Info:\n", (int)id);
+    printf("\tLabel: %.32s\n", token_info.label);
+    printf("\tManufacturer: %.32s\n", token_info.manufacturerID);
+    printf("\tModel: %.16s\n", token_info.model);
+    printf("\tSerial Number: %.16s\n", token_info.serialNumber);
+    printf("\tFlags: 0x%X\n", (int)token_info.flags);
+    printf("\tSessions: %d/%d\n", (int)token_info.ulSessionCount,
+                                  (int)token_info.ulMaxSessionCount);
+    printf("\tR/W Sessions: %d/%d\n", (int)token_info.ulRwSessionCount,
+                                      (int)token_info.ulMaxRwSessionCount);
+    printf("\tPIN Length: %d-%d\n", (int)token_info.ulMinPinLen,
+                                    (int)token_info.ulMaxPinLen);
+    printf("\tPublic Memory: 0x%X/0x%X\n", (int)token_info.ulFreePublicMemory,
+                                           (int)token_info.ulTotalPublicMemory);
+    printf("\tPrivate Memory: 0x%X/0x%X\n", (int)token_info.ulFreePrivateMemory,
+                                           (int)token_info.ulTotalPrivateMemory);
+    printf("\tHardware Version: %d.%d\n", (int)token_info.hardwareVersion.major,
+                                          (int)token_info.hardwareVersion.minor);
+    printf("\tFirmware Version: %d.%d\n", token_info.firmwareVersion.major,
+                                          token_info.firmwareVersion.minor);
+    printf("\tTime: %.16s\n", token_info.utcTime);
     return CKR_OK;
 }
 
@@ -181,10 +170,6 @@ CK_RV cleanup(void)
 {
     CK_RV rc;   /* Return Code */
 
-    /* To clean up we will free the slot list we create, call the Finalize
-     * routine for PKCS11 and close the dynamically linked library
-     */
-    free(slot_list);
     rc = function_ptr->C_Finalize(NULL);
     return(rc);
 }
