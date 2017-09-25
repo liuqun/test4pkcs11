@@ -25,8 +25,8 @@
 
 CK_RV init(void);
 CK_RV cleanup(void);
-CK_RV display_slot_info(CK_SLOT_ID id);
-CK_RV display_token_info(CK_SLOT_ID id);
+CK_RV print_slot_info(CK_SLOT_INFO slot_info);
+CK_RV print_token_info(CK_TOKEN_INFO token_info);
 
 CK_FUNCTION_LIST_PTR    function_ptr = NULL;
 
@@ -63,8 +63,28 @@ int main(int argc, char *argv[])
 
             /* Display token info and slot info for each slot ID in "slot_list" */
             for (i = 0; i < slot_count; i++) {
-                display_token_info(slot_list[i]);
-                display_slot_info(slot_list[i]);
+                CK_RV token_info_err;
+                CK_RV slot_info_err;
+                CK_TOKEN_INFO token_info; ///< Structure to hold token information
+                CK_SLOT_INFO slot_info; ///< Structure to hold slot information
+                CK_SLOT_ID id;
+
+                id = slot_list[i];
+                token_info_err = function_ptr->C_GetTokenInfo(id, &token_info);
+                slot_info_err = function_ptr->C_GetSlotInfo(id, &slot_info);
+                if (token_info_err) {
+                    printf("Error getting token info: 0x%X\n", (int)token_info_err);
+                }
+                if (slot_info_err) {
+                    printf("Error getting the slot info: 0x%X\n", (int)slot_info_err);
+                }
+                if (token_info_err || slot_info_err) {
+                    continue;
+                }
+                printf("Token #%d Info:\n", (int)id);
+                print_token_info(token_info);
+                printf("Slot #%d Info\n", (int)id);
+                print_slot_info(slot_info);
             }
 
             free(slot_list);
@@ -80,23 +100,9 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-CK_RV display_slot_info(CK_SLOT_ID id)
+CK_RV print_slot_info(CK_SLOT_INFO slot_info)
 {
-    CK_RV           rc;         /* Return Code */
-    CK_SLOT_INFO    slot_info;   /* Structure to hold slot information */
-
-    /* Get the info for the slot we are examining and store in "slot_info" */
-    rc = function_ptr->C_GetSlotInfo(id, &slot_info);
-    if (rc != CKR_OK) {
-        printf("Error getting the slot info: 0x%X\n", (int)rc);
-        if (CKR_SLOT_ID_INVALID == rc) {
-            fprintf(stdout, "Invalid slot id: %d\n", (int)id);
-        }
-        return rc;
-    }
-
     /* Display the slot information */
-    printf("Slot #%d Info\n", (int)id);
     printf("\tDescription: %.64s\n", slot_info.slotDescription);
     printf("\tManufacturer: %.32s\n", slot_info.manufacturerID);
     printf("\tFlags: 0x%X\n", (int)slot_info.flags);
@@ -107,23 +113,9 @@ CK_RV display_slot_info(CK_SLOT_ID id)
     return CKR_OK;
 }
 
-CK_RV display_token_info(CK_SLOT_ID id)
+CK_RV print_token_info(CK_TOKEN_INFO token_info)
 {
-    CK_RV           rc;         /* Return Code */
-    CK_TOKEN_INFO   token_info;  /* Structure to hold token information */
-
-    /* Get the info for the token in the slot, and store in "token_info" */
-    rc = function_ptr->C_GetTokenInfo(id, &token_info);
-    if (rc != CKR_OK) {
-        printf("Error getting token info: 0x%X\n", (int)rc);
-        if (CKR_SLOT_ID_INVALID == rc) {
-            fprintf(stdout, "Invalid slot id: %d\n", (int)id);
-        }
-        return rc;
-    }
-
     /* Display the token information */
-    printf("Token #%d Info:\n", (int)id);
     printf("\tLabel: %.32s\n", token_info.label);
     printf("\tManufacturer: %.32s\n", token_info.manufacturerID);
     printf("\tModel: %.16s\n", token_info.model);
