@@ -23,8 +23,6 @@
 #define CFG_PKCS_INFO   0X0008
 #define CFG_TOKEN_INFO  0x0010
 
-CK_RV init(void);
-CK_RV cleanup(void);
 CK_RV print_slot_info(CK_SLOT_INFO slot_info);
 CK_RV print_token_info(CK_TOKEN_INFO token_info);
 
@@ -34,6 +32,7 @@ pkcs11_api_t *api;
 
 int main(int argc, char *argv[])
 {
+    CK_RV rc;
     api = new_pkcs11_api_instance("/usr/lib/opencryptoki/libopencryptoki.so");
     if (!api) {
         fprintf(stderr, "Error initializing the PKCS11 library\n");
@@ -41,11 +40,13 @@ int main(int argc, char *argv[])
     }
     function_ptr = api->functions;
 
-    /* Load the PKCS11 library */
-    init();
-
+    /* PKCS#11 library initialize */
+    rc = function_ptr->C_Initialize(NULL);
+    if (rc != CKR_OK) {
+        fprintf(stderr, "Error initializing the PKCS#11 library: rc=%X\n", (int)rc);
+        goto CLOSE_DLL_BEFORE_EXIT;
+    }
     do {
-        CK_RV rc;
         CK_ULONG slot_count = 0;
 
         /* Find out how many tokens are present in the slots */
@@ -92,10 +93,15 @@ int main(int argc, char *argv[])
         }
     } while (0);
 
-    /* Clean up everything except the api instance */
-    cleanup();
+    /* PKCS#11 library finalize */
+    rc = function_ptr->C_Finalize(NULL);
+    if (rc != CKR_OK) {
+        fprintf(stderr, "Error finalizing the PKCS#11 library: rc=%X\n", (int)rc);
+        goto CLOSE_DLL_BEFORE_EXIT;
+    }
 
     /* Close DLL instance before exit */
+CLOSE_DLL_BEFORE_EXIT:
     delete_pkcs11_api_instance(api);
     return 0;
 }
@@ -137,30 +143,4 @@ CK_RV print_token_info(CK_TOKEN_INFO token_info)
                                           token_info.firmwareVersion.minor);
     printf("\tTime: %.16s\n", token_info.utcTime);
     return CKR_OK;
-}
-
-CK_RV init(void)
-{
-    CK_RV rc;           /* Return Code */
-
-    /* If we get here, we know the slot manager is running and we can use PKCS11
-     * calls, so we will execute the PKCS11 Initialize command.
-     */
-    rc = function_ptr->C_Initialize(NULL);
-    if (rc != CKR_OK) {
-        printf("Error initializing the PKCS11 library: 0x%X\n", (int)rc);
-        fflush(stdout);
-        cleanup();
-        exit(0xFF);
-    }
-
-    return rc;
-}
-
-CK_RV cleanup(void)
-{
-    CK_RV rc;   /* Return Code */
-
-    rc = function_ptr->C_Finalize(NULL);
-    return(rc);
 }
