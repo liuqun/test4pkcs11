@@ -25,7 +25,6 @@
 
 CK_RV init(void);
 CK_RV cleanup(void);
-CK_RV get_slot_list(int, CK_CHAR_PTR);
 CK_RV display_slot_info(CK_SLOT_ID id);
 CK_RV display_token_info(CK_SLOT_ID id);
 
