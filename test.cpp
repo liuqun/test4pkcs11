@@ -19,6 +19,7 @@
 
 CK_RV print_slot_info(CK_SLOT_INFO slot_info);
 CK_RV print_token_info(CK_TOKEN_INFO token_info);
+CK_RV print_info(CK_INFO info);
 
 int main(int argc, char *argv[])
 {
@@ -43,6 +44,18 @@ int main(int argc, char *argv[])
         exit(0xFF);
     }
     recorder.registerInstance(NULL, (instance_destructor_func_t) function_ptr->C_Finalize);
+
+    if (rc == CKR_OK) {
+        CK_INFO info;
+
+        /* Get the PKCS11 infomation structure */
+        rc = function_ptr->C_GetInfo(&info);
+        if (rc != CKR_OK) {
+            printf("Error getting PKCS#11 info: 0x%X\n", (int)rc);
+        } else {
+            print_info(info);
+        }
+    }
 
     do {
         CK_ULONG slot_count = 0;
@@ -130,5 +143,17 @@ CK_RV print_token_info(CK_TOKEN_INFO token_info)
     printf("\tFirmware Version: %d.%d\n", token_info.firmwareVersion.major,
                                           token_info.firmwareVersion.minor);
     printf("\tTime: %.16s\n", token_info.utcTime);
+    return CKR_OK;
+}
+
+CK_RV print_info(CK_INFO info)
+{
+    /* display the header and information */
+    printf("PKCS#11 Info\n");
+    printf("\tVersion %d.%d \n", info.cryptokiVersion.major, info.cryptokiVersion.minor);
+    printf("\tManufacturer: %.32s \n", info.manufacturerID);
+    printf("\tFlags: 0x%lX  \n", info.flags);
+    printf("\tLibrary Description: %.32s \n", info.libraryDescription);
+    printf("\tLibrary Version %d.%d \n", info.libraryVersion.major, info.libraryVersion.minor);
     return CKR_OK;
 }
