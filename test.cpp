@@ -4,6 +4,7 @@
  * All rights reserved.
  */
 
+#include <set>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -98,6 +99,62 @@ int main(int argc, char *argv[])
                 print_token_info(token_info);
                 printf("Slot #%d Info\n", (int)id);
                 print_slot_info(slot_info);
+                /* Check the mechanism set supported by current token */
+                {
+                    int j;
+                    CK_ULONG mechanism_count = 0;
+                    CK_MECHANISM_TYPE_PTR mechanism_list;
+                    std::set<CK_MECHANISM_TYPE> mechanism_set;
+
+                    /* Find out how many mechanisms are present */
+                    rc = function_ptr->C_GetMechanismList(id, NULL, &mechanism_count);
+                    if (rc != CKR_OK) {
+                        printf("Error getting number of mechanisms: 0x%X\n", (int)rc);
+                        continue;
+                    }
+                    printf("There are totally %d different mechanisms supported by Token #%d\n", (int)mechanism_count, (int)id);
+
+                    mechanism_list = (CK_MECHANISM_TYPE_PTR) calloc(mechanism_count, sizeof(CK_MECHANISM_TYPE));
+                    recorder.registerInstance(mechanism_list, free);
+                    rc = function_ptr->C_GetMechanismList(id, mechanism_list, &mechanism_count);
+                    mechanism_set.insert(mechanism_list, mechanism_list+mechanism_count);
+                    {
+                        CK_MECHANISM_INFO m;
+                        const CK_MECHANISM_TYPE type = CKM_RSA_X_509;
+                        const char *label= "CKM_RSA_X_509";
+                        if (mechanism_set.count(type) >= 1) {
+                            printf("%s is supported by Token #%d.\n", label, (int)id);
+
+                            /* Get the Mechanism Info */
+                            rc = function_ptr->C_GetMechanismInfo(id, type, &m);
+                            if (rc != CKR_OK) {
+                                printf("Error getting mechanisms info: 0x%X\n", (int)rc);
+                            } else {
+                                printf("\tKey Size: %d-%d\n", (int)m.ulMinKeySize, (int)m.ulMaxKeySize);
+                                printf("\tFlags: 0x%X = [ %s%s%s%s%s%s%s%s%s%s%s%s%s]\n",
+                                        (int) m.flags,
+                                        m.flags & CKF_HW ? "HW " : "",
+                                        m.flags & CKF_ENCRYPT ? "ENCR " : "",
+                                        m.flags & CKF_DECRYPT ? "DECR " : "",
+                                        m.flags & CKF_DIGEST ? "DGST " : "",
+                                        m.flags & CKF_SIGN ? "SIGN " : "",
+                                        m.flags & CKF_SIGN_RECOVER ? "SIGN_RCVR " : "",
+                                        m.flags & CKF_VERIFY ? "VRFY " : "",
+                                        m.flags & CKF_VERIFY_RECOVER ? "VRFY_RCVR " : "",
+                                        m.flags & CKF_GENERATE ? "GEN " : "",
+                                        m.flags & CKF_GENERATE_KEY_PAIR ? "GEN_KEY_PAIR " : "",
+                                        m.flags & CKF_WRAP ? "WRAP " : "",
+                                        m.flags & CKF_UNWRAP ? "UNWRAP " : "",
+                                        m.flags & CKF_DERIVE ? "DERIVE " : "");
+                            }
+                        } else {
+                            printf("Token #%d does not support %s.\n", (int)id, label);
+                        }
+                    }
+
+                    mechanism_list = NULL;
+                    mechanism_count = 0;
+                }
             }
 
             slot_list = NULL;
