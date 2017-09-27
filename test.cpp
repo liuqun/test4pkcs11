@@ -18,9 +18,9 @@
 #include "ApplicationResourceRecorder.h"
 #include "pkcs11-api-loader.h"
 
-CK_RV print_slot_info(CK_SLOT_INFO slot_info);
-CK_RV print_token_info(CK_TOKEN_INFO token_info);
-CK_RV print_info(CK_INFO info);
+CK_RV print_slot_info(const CK_SLOT_INFO& slot_info);
+CK_RV print_token_info(const CK_TOKEN_INFO& token_info);
+CK_RV print_info(const CK_INFO& info);
 CK_RV print_mechanism_info(const CK_MECHANISM_INFO& mechanism_info);
 
 int main(int argc, char *argv[])
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-CK_RV print_slot_info(CK_SLOT_INFO slot_info)
+CK_RV print_slot_info(const CK_SLOT_INFO& slot_info)
 {
     /* Display the slot information */
     printf("\tDescription: %.64s\n", slot_info.slotDescription);
@@ -159,7 +159,7 @@ CK_RV print_slot_info(CK_SLOT_INFO slot_info)
     return CKR_OK;
 }
 
-CK_RV print_token_info(CK_TOKEN_INFO token_info)
+CK_RV print_token_info(const CK_TOKEN_INFO& token_info)
 {
     /* Display the token information */
     printf("\tLabel: %.32s\n", token_info.label);
@@ -185,7 +185,7 @@ CK_RV print_token_info(CK_TOKEN_INFO token_info)
     return CKR_OK;
 }
 
-CK_RV print_info(CK_INFO info)
+CK_RV print_info(const CK_INFO& info)
 {
     /* display the header and information */
     printf("PKCS#11 Info\n");
