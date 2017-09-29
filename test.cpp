@@ -248,6 +248,23 @@ int main(int argc, char *argv[])
                             printf("Mechanism %s:%s NO! %s\n", label, "\033[31m", "\033[0m");
                         }
                     }
+                    {
+                        const char *label= "CKM_RSA_PKCS_KEY_PAIR_GEN";
+                        const CK_MECHANISM_TYPE type = CKM_RSA_PKCS_KEY_PAIR_GEN;
+                        if (mechanism_set.count(type) >= 1) {
+                            CK_RV mechanism_info_err;
+                            CK_MECHANISM_INFO mechanism_info;
+                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type, &mechanism_info);
+                            if (mechanism_info_err) {
+                                fprintf(stderr, "Error getting mechanism info: 0x%X\n", (int)mechanism_info_err);
+                            } else {
+                                printf("Mechanism %s: yes\n", label);
+                                print_mechanism_info(mechanism_info);
+                            }
+                        } else {
+                            printf("Mechanism %s:%s NO! %s\n", label, "\033[31m", "\033[0m");
+                        }
+                    }
                 }
             }
 
