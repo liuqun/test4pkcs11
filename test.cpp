@@ -15,6 +15,11 @@
 #error // 找不到 opencryptoki/pkcs11.h
 #endif
 #include <opencryptoki/pkcs11.h>
+#undef CKM_SHA256_RSA_PKCS
+#define CKM_SHA256_RSA_PKCS (0x40) // opencryptoki<=v2.4.2 gives us a wrong constant value
+#ifndef CKM_SHA256_RSA_PKCS_PSS // opencryptoki<=v3.2 does not support SHA256 RSA signature using PSS padding sheme
+#define CKM_SHA256_RSA_PKCS_PSS (0x43)
+#endif
 #include "ApplicationResourceRecorder.h"
 #include "pkcs11-api-loader.h"
 
