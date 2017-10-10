@@ -35,7 +35,7 @@ test: test.o pkcs11-api-loader.o ApplicationResourceRecorder.o
 
 .PHONY: clean
 clean:
-	$(RM) $(EXEC)
+	$(RM) $(EXEC) *.o
 
 config.h:
 	$(MAKE) defconfig
