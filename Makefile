@@ -15,7 +15,7 @@ all: config.h $(EXEC)
 print-current-tokens: print-current-tokens.o pkcs11-api-loader.o
 	$(LINK.o) -o $@ $^ $(LIBS)
 
-test: test.o pkcs11-api-loader.o ApplicationResourceRecorder.o
+test: test.o symbol-from-rc.o pkcs11-api-loader.o ApplicationResourceRecorder.o
 	$(LINK.o) -o $@ $^ $(LIBS) -lstdc++
 
 %.o: %.cpp %.h

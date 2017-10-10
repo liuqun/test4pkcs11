@@ -22,6 +22,7 @@
 #endif
 #include "ApplicationResourceRecorder.h"
 #include "pkcs11-api-loader.h"
+#include "symbol-from-rc.h"
 
 CK_RV print_slot_info(const CK_SLOT_INFO& slot_info);
 CK_RV print_token_info(const CK_TOKEN_INFO& token_info);
@@ -47,7 +48,7 @@ int main(int argc, char *argv[])
     /* PKCS#11 library initialize */
     rc = function_ptr->C_Initialize(NULL);
     if (rc != CKR_OK) {
-        fprintf(stderr, "Error initializing the PKCS#11 library: rc=%X\n", (int)rc);
+        fprintf(stderr, "Error initializing the PKCS#11 library: rc=%X(%s)\n", (int)rc, symbol_from_rc(rc));
         exit(0xFF);
     }
     recorder.registerInstance(NULL, (instance_destructor_func_t) function_ptr->C_Finalize);
@@ -116,6 +117,7 @@ int main(int argc, char *argv[])
                 mechanism_count_err = function_ptr->C_GetMechanismList(id, NULL, &mechanism_count);
                 if (mechanism_count_err) {
                     printf("Error getting number of mechanisms: 0x%X\n", (int)mechanism_count_err);
+                    fprintf(stderr, "%s\n", symbol_from_rc(mechanism_count_err));
                     continue;
                 }
                 printf("Token #%d supported mechanism types: %d\n", (int)id, (int)mechanism_count);
@@ -129,128 +131,132 @@ int main(int argc, char *argv[])
                     /* Check whether particular mechanism type (e.g. CKM_RSA_X_509) is supported by the current token */
                     {
                         const char *label= "CKM_RSA_X_509";
-                        const CK_MECHANISM_TYPE type1 = CKM_RSA_X_509;
-                        if (mechanism_set.count(type1) >= 1) {
+                        const CK_MECHANISM_TYPE type = CKM_RSA_X_509;
+                        if (mechanism_set.count(type) >= 1) {
                             CK_RV mechanism_info_err;
                             CK_MECHANISM_INFO mechanism_info;
-                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type1, &mechanism_info);
+                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type, &mechanism_info);
                             if (mechanism_info_err) {
                                 fprintf(stderr, "Error getting mechanism info: 0x%X\n", (int)mechanism_info_err);
                             } else {
-                                printf("Mechanism %s: yes\n", label);
+                                printf("Mechanism %s(=0x%X): yes\n", label, (int)type);
                                 print_mechanism_info(mechanism_info);
                             }
                         } else {
-                            printf("Mechanism %s:%s NO! %s\n", label, "\033[31m", "\033[0m");
+                            printf("Mechanism %s(=0x%X):%s NO! %s\n", label, (int)type, "\033[31m", "\033[0m");
                         }
+
                     }
                     /* Check other mechanism types */
                     {
                         const char *label= "CKM_RSA_PKCS";
                         const char *detail = "RSA cipher/signature method using PKCS#1-v1.5 padding scheme";
-                        const CK_MECHANISM_TYPE type2 = CKM_RSA_PKCS;
-                        if (mechanism_set.count(type2) >= 1) {
+                        const CK_MECHANISM_TYPE type = CKM_RSA_PKCS;
+                        if (mechanism_set.count(type) >= 1) {
                             CK_RV mechanism_info_err;
                             CK_MECHANISM_INFO mechanism_info;
-                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type2, &mechanism_info);
+                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type, &mechanism_info);
                             if (mechanism_info_err) {
                                 fprintf(stderr, "Error getting mechanism info: 0x%X\n", (int)mechanism_info_err);
+                                fprintf(stderr, "%s\n", symbol_from_rc(mechanism_info_err));
                             } else {
-                                printf("Mechanism %s: yes\n", label);
+                                printf("Mechanism %s(=0x%X): yes\n", label, (int)type);
                                 print_mechanism_info(mechanism_info);
                             }
                         } else {
-                            printf("Mechanism %s:%s NO! %s\n", label, "\033[31m", "\033[0m");
+                            printf("Mechanism %s(=0x%X):%s NO! %s\n", label, (int)type, "\033[31m", "\033[0m");
                         }
+
                     }
                     {
                         const char *label = "CKM_RSA_PKCS_OAEP";
                         const char *detail = "RSA cipher using EME-OAEP padding scheme. OAEP不能用于数字签名";
-                        const CK_MECHANISM_TYPE type2 = CKM_RSA_PKCS_OAEP;
-                        if (mechanism_set.count(type2) >= 1) {
+                        const CK_MECHANISM_TYPE type = CKM_RSA_PKCS_OAEP;
+                        if (mechanism_set.count(type) >= 1) {
                             CK_RV mechanism_info_err;
                             CK_MECHANISM_INFO mechanism_info;
-                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type2, &mechanism_info);
+                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type, &mechanism_info);
                             if (mechanism_info_err) {
                                 fprintf(stderr, "Error getting mechanism info: 0x%X\n", (int)mechanism_info_err);
+                                fprintf(stderr, "%s\n", symbol_from_rc(mechanism_info_err));
                             } else {
-                                printf("Mechanism %s: yes\n", label);
+                                printf("Mechanism %s(=0x%X): yes\n", label, (int)type);
                                 print_mechanism_info(mechanism_info);
                             }
                         } else {
-                            printf("Mechanism %s:%s NO! %s\n", label, "\033[31m", "\033[0m");
+                            printf("Mechanism %s(=0x%X):%s NO! %s\n", label, (int)type, "\033[31m", "\033[0m");
                         }
                     }
                     {
                         const char *label= "CKM_SHA1_RSA_PKCS";
                         const char *detail = "RSA digital signature using PKCS#1-v1.5 padding scheme on SHA1 digest";
-                        const CK_MECHANISM_TYPE type1 = CKM_SHA1_RSA_PKCS;
-                        if (mechanism_set.count(type1) >= 1) {
+                        const CK_MECHANISM_TYPE type = CKM_SHA1_RSA_PKCS;
+                        if (mechanism_set.count(type) >= 1) {
                             CK_RV mechanism_info_err;
                             CK_MECHANISM_INFO mechanism_info;
-                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type1, &mechanism_info);
+                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type, &mechanism_info);
                             if (mechanism_info_err) {
                                 fprintf(stderr, "Error getting mechanism info: 0x%X\n", (int)mechanism_info_err);
                             } else {
-                                printf("Mechanism %s: yes\n", label);
+                                printf("Mechanism %s(=0x%X): yes\n", label, (int)type);
                                 print_mechanism_info(mechanism_info);
                             }
                         } else {
-                            printf("Mechanism %s:%s NO! %s\n", label, "\033[31m", "\033[0m");
+                            printf("Mechanism %s(=0x%X):%s NO! %s\n", label, (int)type, "\033[31m", "\033[0m");
                         }
                     }
                     {
                         const char *label= "CKM_SHA1_RSA_PKCS_PSS";
                         const char *detail = "RSA digital signature using PSS padding scheme on SHA1 digest";
-                        const CK_MECHANISM_TYPE type1 = CKM_SHA1_RSA_PKCS_PSS;
-                        if (mechanism_set.count(type1) >= 1) {
+                        const CK_MECHANISM_TYPE type = CKM_SHA1_RSA_PKCS_PSS;
+                        if (mechanism_set.count(type) >= 1) {
                             CK_RV mechanism_info_err;
                             CK_MECHANISM_INFO mechanism_info;
-                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type1, &mechanism_info);
+                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type, &mechanism_info);
                             if (mechanism_info_err) {
                                 fprintf(stderr, "Error getting mechanism info: 0x%X\n", (int)mechanism_info_err);
                             } else {
-                                printf("Mechanism %s: yes\n", label);
+                                printf("Mechanism %s(=0x%X): yes\n", label, (int)type);
                                 print_mechanism_info(mechanism_info);
                             }
                         } else {
-                            printf("Mechanism %s:%s NO! %s\n", label, "\033[31m", "\033[0m");
+                            printf("Mechanism %s(=0x%X):%s NO! %s\n", label, (int)type, "\033[31m", "\033[0m");
                         }
                     }
                     {
                         const char *label= "CKM_SHA256_RSA_PKCS";
                         const char *detail = "RSA digital signature using PKCS#1-v1.5 padding scheme on SHA256 digest";
-                        const CK_MECHANISM_TYPE type1 = CKM_SHA256_RSA_PKCS;
-                        if (mechanism_set.count(type1) >= 1) {
+                        const CK_MECHANISM_TYPE type = CKM_SHA256_RSA_PKCS;
+                        if (mechanism_set.count(type) >= 1) {
                             CK_RV mechanism_info_err;
                             CK_MECHANISM_INFO mechanism_info;
-                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type1, &mechanism_info);
+                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type, &mechanism_info);
                             if (mechanism_info_err) {
                                 fprintf(stderr, "Error getting mechanism info: 0x%X\n", (int)mechanism_info_err);
                             } else {
-                                printf("Mechanism %s: yes\n", label);
+                                printf("Mechanism %s(=0x%X): yes\n", label, (int)type);
                                 print_mechanism_info(mechanism_info);
                             }
                         } else {
-                            printf("Mechanism %s:%s NO! %s\n", label, "\033[31m", "\033[0m");
+                            printf("Mechanism %s(=0x%X):%s NO! %s\n", label, (int)type, "\033[31m", "\033[0m");
                         }
                     }
                     {
                         const char *label= "CKM_SHA256_RSA_PKCS_PSS";
                         const char *detail = "RSA digital signature using PSS padding scheme on SHA256 digest";
-                        const CK_MECHANISM_TYPE type1 = CKM_SHA256_RSA_PKCS_PSS;
-                        if (mechanism_set.count(type1) >= 1) {
+                        const CK_MECHANISM_TYPE type = CKM_SHA256_RSA_PKCS_PSS;
+                        if (mechanism_set.count(type) >= 1) {
                             CK_RV mechanism_info_err;
                             CK_MECHANISM_INFO mechanism_info;
-                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type1, &mechanism_info);
+                            mechanism_info_err = function_ptr->C_GetMechanismInfo(id, type, &mechanism_info);
                             if (mechanism_info_err) {
                                 fprintf(stderr, "Error getting mechanism info: 0x%X\n", (int)mechanism_info_err);
                             } else {
-                                printf("Mechanism %s: yes\n", label);
+                                printf("Mechanism %s(=0x%X): yes\n", label, (int)type);
                                 print_mechanism_info(mechanism_info);
                             }
                         } else {
-                            printf("Mechanism %s:%s NO! %s\n", label, "\033[31m", "\033[0m");
+                            printf("Mechanism %s(=0x%X):%s NO! %s\n", label, (int)type, "\033[31m", "\033[0m");
                         }
                     }
                     {
@@ -263,11 +269,11 @@ int main(int argc, char *argv[])
                             if (mechanism_info_err) {
                                 fprintf(stderr, "Error getting mechanism info: 0x%X\n", (int)mechanism_info_err);
                             } else {
-                                printf("Mechanism %s: yes\n", label);
+                                printf("Mechanism %s(=0x%X): yes\n", label, (int)type);
                                 print_mechanism_info(mechanism_info);
                             }
                         } else {
-                            printf("Mechanism %s:%s NO! %s\n", label, "\033[31m", "\033[0m");
+                            printf("Mechanism %s(=0x%X):%s NO! %s\n", label, (int)type, "\033[31m", "\033[0m");
                         }
                     }
                 }
