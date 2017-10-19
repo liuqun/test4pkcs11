@@ -7,4 +7,5 @@ project(MyTestProject C)
 set(CMAKE_C_STANDARD 90)
 set(CMAKE_C_EXTENSIONS False)
 
-add_executable(helloworld helloworld.c)
+aux_source_directory(./src SRC_LIST)
+add_executable(helloworld ${SRC_LIST})
