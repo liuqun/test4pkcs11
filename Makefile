@@ -12,7 +12,7 @@ LIBS += -ldl -lpthread
 .PHONY: all
 all: config.h $(EXEC)
 
-print-current-tokens: print-current-tokens.o pkcs11-api-loader.o
+print-current-tokens: print-current-tokens.o pkcs11-probe.o
 	$(LINK.o) -o $@ $^ $(LIBS)
 
 test: test.o symbol-from-rc.o pkcs11-api-loader.o ApplicationResourceRecorder.o
