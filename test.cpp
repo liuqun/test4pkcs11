@@ -21,7 +21,7 @@
 #define CKM_SHA256_RSA_PKCS_PSS (0x43)
 #endif
 #include "ApplicationResourceRecorder.h"
-#include "pkcs11-api-loader.h"
+#include "pkcs11-probe.h"
 #include "symbol-from-rc.h"
 
 CK_RV print_slot_info(const CK_SLOT_INFO& slot_info);
@@ -33,17 +33,17 @@ int main(int argc, char *argv[])
 {
     CK_FUNCTION_LIST_PTR function_ptr = NULL;
     CK_RV rc;
-    pkcs11_api_t *api;
+    pkcs11_t api;
     ApplicationResourceRecorder recorder;
 
-    api = new_pkcs11_api_instance("/usr/lib/opencryptoki/libopencryptoki.so");
-    if (!api) {
+    api = new_pkcs11_instance();
+    if (pkcs11_probe(api, "/usr/lib/opencryptoki/libopencryptoki.so")) {
         fprintf(stderr, "Error initializing the PKCS11 library\n");
         exit(0xFF);
     }
-    recorder.registerInstance((instance_ptr_t)api, (instance_destructor_func_t)delete_pkcs11_api_instance);
+    recorder.registerInstance((instance_ptr_t)api.ptr, (instance_destructor_func_t)delete_pkcs11_instance);
 
-    function_ptr = api->functions;
+    function_ptr = pkcs11_get_api_function_list(api);
 
     /* PKCS#11 library initialize */
     rc = function_ptr->C_Initialize(NULL);
