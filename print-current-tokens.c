@@ -17,7 +17,7 @@
 #endif
 
 #include <opencryptoki/pkcs11.h>
-#include "pkcs11-api-loader.h"
+#include "pkcs11-probe.h"
 
 #define CFG_SLOT        0x0004
 #define CFG_PKCS_INFO   0X0008
@@ -30,14 +30,14 @@ int main(int argc, char *argv[])
 {
     CK_RV rc;
     CK_FUNCTION_LIST_PTR function_ptr = NULL;
-    pkcs11_api_t *api;
+    pkcs11_t api;
 
-    api = new_pkcs11_api_instance("/usr/lib/opencryptoki/libopencryptoki.so");
-    if (!api) {
+    api = new_pkcs11_instance();
+    if (pkcs11_probe(api, "/usr/lib/opencryptoki/libopencryptoki.so") != PROBE_SUCCESS) {
         fprintf(stderr, "Error initializing the PKCS11 library\n");
         exit(0xFF);
     }
-    function_ptr = api->functions;
+    function_ptr = pkcs11_get_api_function_list(api);
 
     /* PKCS#11 library initialize */
     rc = function_ptr->C_Initialize(NULL);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 
     /* Close DLL instance before exit */
 CLOSE_DLL_BEFORE_EXIT:
-    delete_pkcs11_api_instance(api);
+    delete_pkcs11_instance(api);
     return 0;
 }
 
