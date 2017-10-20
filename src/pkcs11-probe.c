@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <assert.h>
 #include <dlfcn.h>
-#include <opencryptoki/pkcs11.h>
 #include "pkcs11-probe.h"
 
 /* K&R 代码风格: 使用 4 个空格, 不使用 Tab */

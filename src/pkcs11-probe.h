@@ -8,10 +8,7 @@
 #define PKCS11_PROBE_H_
 
 #include "config.h"
-#ifndef HAVE_OPENCRYPTOKI_PKCS11_H
-#error // 找不到 opencryptoki/pkcs11.h
-#endif
-#include <opencryptoki/pkcs11.h>
+#include "pkcs11.h"
 
 typedef struct api_instance_t *api_t;
 
