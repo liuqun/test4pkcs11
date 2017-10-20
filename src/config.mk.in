@@ -1,0 +1,5 @@
+﻿# (Please set your editor with UTF-8 encoding if The Chinese characters are unreadable)
+
+# Project configurations
+P11_KIT_CFLAGS=@P11_KIT_CFLAGS@
+P11_KIT_LIBS=@P11_KIT_LIBS@
