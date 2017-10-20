@@ -12,11 +12,7 @@
 #include <dlfcn.h>
 
 #include "config.h"
-#ifndef HAVE_OPENCRYPTOKI_PKCS11_H
-#error // 找不到 opencryptoki/pkcs11.h
-#endif
-
-#include <opencryptoki/pkcs11.h>
+#include "pkcs11.h"
 #include "pkcs11-probe.h"
 
 #define CFG_SLOT        0x0004
