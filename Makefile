@@ -1,48 +1,18 @@
 ﻿# Encoding: UTF-8
-# Makefile for my sample program
-# https://github.com/opencryptoki/opencryptoki/blob/e460cc1ab72b3b27e648ff883b74bac0733c71af/doc/opencryptoki-howto.md#10-appendix-a-sample-program
-
-EXEC += test
-EXEC += print-current-tokens
-CUSTOMIZED_INCLUDE_DIRS =
-CFLAGS += -g -O0 $(CUSTOMIZED_INCLUDE_DIRS)
-CXXFLAGS += -g -O0 $(CUSTOMIZED_INCLUDE_DIRS)
-LIBS += -ldl -lpthread
+# Top level Makefile for my sample program
 
 .PHONY: all
-all: config.h $(EXEC)
+all: src/config.mk
+	$(MAKE) -C src --makefile=GNUmakefile
 
-print-current-tokens: print-current-tokens.o pkcs11-probe.o
-	$(LINK.o) -o $@ $^ $(LIBS)
+src/config.mk: configure
+	./configure
 
-test: test.o symbol-from-rc.o pkcs11-probe.o ApplicationResourceRecorder.o
-	$(LINK.o) -o $@ $^ $(LIBS) -lstdc++
-
-%.o: %.cpp %.h
-	$(COMPILE.cpp) -o $@ $<
-
-%.o: %.cpp
-	$(COMPILE.cpp) -o $@ $<
-
-%: %.c
-	$(LINK.c) -o $@ $^ $(LIBS)
-
-%.o: %.c %.h
-	$(COMPILE.c) -o $@ $<
-
-%.o: %.c
-	$(COMPILE.c) -o $@ $<
-
-.PHONY: clean
-clean:
-	$(RM) $(EXEC) *.o
-
-config.h:
-	$(MAKE) defconfig
-
-.PHONY: defconfig
-defconfig:
+configure: configure.ac
 	autoreconf --install
 	chmod +x ./configure
-	./configure
+
+clean:
+	$(MAKE) -C src --makefile=GNUmakefile $@
+	$(RM) src/config.mk src/config.h
 # vim: ts=4 sw=4
