@@ -5,6 +5,8 @@
 #else
     #ifdef HAVE_OPENCRYPTOKI_PKCS11_H
     #include <opencryptoki/pkcs11.h>
+    #else
+    #error // You should install either opencryptoki or p11-kit development files!
     #endif
 #endif
 
