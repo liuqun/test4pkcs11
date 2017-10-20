@@ -8,11 +8,7 @@
 #define SYMBOL_FROM_RC_H_
 
 #include "config.h"
-
-#ifndef HAVE_STDINT_H
-#error // 找不到 stdint.h
-#endif
-#include <stdint.h>
+#include <stdint.h> // uint32_t
 
 #ifdef __cplusplus
 extern "C" {
