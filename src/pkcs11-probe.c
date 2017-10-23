@@ -65,6 +65,9 @@ probe_result_t pkcs11_probe(pkcs11_t self, const char *lib)
             ++lib;
         } while(lib);
     }
+    if (!lib) {
+        return PROBE_GENERIC_FAILURE;
+    }
 
     /* Get the list of the PKCS11 functions this token supports */
     C_GetFunctionList = (CK_C_GetFunctionList) dlsym(self.api->handle, "C_GetFunctionList");
