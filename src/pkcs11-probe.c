@@ -13,15 +13,77 @@
 
 /* K&R 代码风格: 使用 4 个空格, 不使用 Tab */
 
+typedef struct api_instance_t *api_t;
+extern api_t new_api_instance();
+extern void delete_api_instance(api_t instance);
+extern probe_result_t api_probe(api_t api, const char *lib);
+extern const char *api_which_lib(api_t api);
+
+typedef void (*instance_cleanup_func_t)(void *instance);
+
 struct api_instance_t {
     void *handle;
+    char *from_which_lib;
+    instance_cleanup_func_t cleanup;
 };
+
+static void dummy_instance_clean_up(void *instance)
+{
+    (void) instance; /* gcc -Wunused-parameter */
+}
+
+static void api_instance_init(struct api_instance_t *instance)
+{
+    instance->handle = NULL;
+    instance->from_which_lib = NULL;
+    instance->cleanup = dummy_instance_clean_up;
+}
+
+static void api_instance_clean_up(void *instance)
+{
+    api_t api;
+
+    api = instance;
+    if (api->handle) {
+        dlclose(api->handle);
+        api->handle = NULL;
+    }
+    if (api->from_which_lib) {
+        free(api->from_which_lib);
+        api->from_which_lib = NULL;
+    }
+    api->cleanup = dummy_instance_clean_up;
+}
+
+
+#include <string.h>
+
+#ifndef __USE_XOPEN2K8
+static char *strndup(const char *s, size_t n)
+{
+    char *dst;
+    char *compact;
+    int i;
+
+    dst = malloc(n + 1);
+
+    for (i = 0; i < n && *s; i++, s++) {
+        dst[i] = *s;
+    }
+    dst[i] = '\0';
+    if (i < n && (compact = realloc(dst, i + 1))) {
+        dst = compact;
+    }
+    return dst;
+}
+#endif /* __USE_XOPEN2K8 */
 
 probe_result_t api_probe(api_t self, const char *lib)
 {
     void *handle;
 
     assert(self);
+    self->cleanup(self);
 
     handle = NULL;
     handle = dlopen(lib, RTLD_NOW);
@@ -32,14 +94,36 @@ probe_result_t api_probe(api_t self, const char *lib)
     }
 
     self->handle = handle;
+    const int MAX_BYTES = /* Hard-coded max filepath length: */ 1024;
+    self->from_which_lib = strndup(lib, MAX_BYTES);
+    self->cleanup = api_instance_clean_up;
     return (PROBE_SUCCESS);
+}
+
+const char *api_which_lib(api_t self)
+{
+    return (self->from_which_lib);
 }
 
 struct pkcs11_instance_t {
     struct api_instance_t api;
-    const char *from_which_lib;
     CK_FUNCTION_LIST_PTR functions;
+    instance_cleanup_func_t cleanup;
 };
+
+static void pkcs11_instance_clean_up(void *instance)
+{
+    pkcs11_t u;
+
+    u.ptr = instance;
+
+    /* First, clean up sub items. */
+    u.api->cleanup(instance);
+    /* Then reset each member variable. */
+    u.pkcs11->functions = NULL;
+    /* Last, relink clean-up function pointer to the dummy one. */
+    u.pkcs11->cleanup = dummy_instance_clean_up;
+}
 
 probe_result_t pkcs11_probe(pkcs11_t self, const char *lib)
 {
@@ -47,6 +131,8 @@ probe_result_t pkcs11_probe(pkcs11_t self, const char *lib)
     CK_C_GetFunctionList C_GetFunctionList;
 
     assert(self.ptr);
+
+    self.pkcs11->cleanup(self.ptr);
 
     if (lib && '\0' != lib[0]) {
         int rc = api_probe(self.api, lib);
@@ -68,6 +154,7 @@ probe_result_t pkcs11_probe(pkcs11_t self, const char *lib)
     if (!lib) {
         return PROBE_GENERIC_FAILURE;
     }
+    self.pkcs11->cleanup = pkcs11_instance_clean_up;
 
     /* Get the list of the PKCS11 functions this token supports */
     C_GetFunctionList = (CK_C_GetFunctionList) dlsym(self.api->handle, "C_GetFunctionList");
@@ -80,18 +167,26 @@ probe_result_t pkcs11_probe(pkcs11_t self, const char *lib)
     C_GetFunctionList(&functions);
     /* FIXME: Error cases returned by C_GetFunctionList() should be checked here. */
     self.pkcs11->functions = functions;
-    self.pkcs11->from_which_lib = lib;
     return PROBE_SUCCESS;
 }
 
 const char *pkcs11_which_lib(pkcs11_t instance)
 {
-    return (instance.pkcs11->from_which_lib);
+    return (api_which_lib(instance.api));
 }
 
 const CK_FUNCTION_LIST_PTR pkcs11_get_api_function_list(pkcs11_t instance)
 {
     return (instance.pkcs11->functions);
+}
+
+static void pkcs11_instance_init(struct pkcs11_instance_t *instance)
+{
+    assert(instance);
+
+    api_instance_init(&(instance->api));
+    instance->functions = NULL;
+    instance->cleanup = dummy_instance_clean_up;
 }
 
 pkcs11_t new_pkcs11_instance()
@@ -100,7 +195,8 @@ pkcs11_t new_pkcs11_instance()
 
     instance = malloc(sizeof(struct pkcs11_instance_t));
     assert(instance);
-	return ((pkcs11_t) instance);
+    pkcs11_instance_init(instance);
+    return ((pkcs11_t) instance);
 }
 
 void delete_pkcs11_instance(pkcs11_t instance)
@@ -108,9 +204,6 @@ void delete_pkcs11_instance(pkcs11_t instance)
     if (!instance.ptr) {
         return;
     }
-    if (instance.api->handle) {
-        dlclose(instance.api->handle);
-        instance.api->handle = NULL;
-    }
+    instance.pkcs11->cleanup(instance.ptr);
     free(instance.pkcs11);
 }
