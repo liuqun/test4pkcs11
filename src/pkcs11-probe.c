@@ -27,7 +27,7 @@ struct api_instance_t {
     instance_cleanup_func_t cleanup;
 };
 
-static void dummy_instance_clean_up(void *instance)
+static void dummy_instance_cleanup(void *instance)
 {
     (void) instance; /* gcc -Wunused-parameter */
 }
@@ -36,10 +36,10 @@ static void api_instance_init(struct api_instance_t *instance)
 {
     instance->handle = NULL;
     instance->from_which_lib = NULL;
-    instance->cleanup = dummy_instance_clean_up;
+    instance->cleanup = dummy_instance_cleanup;
 }
 
-static void api_instance_clean_up(void *instance)
+static void api_instance_cleanup(void *instance)
 {
     api_t api;
 
@@ -52,7 +52,7 @@ static void api_instance_clean_up(void *instance)
         free(api->from_which_lib);
         api->from_which_lib = NULL;
     }
-    api->cleanup = dummy_instance_clean_up;
+    api->cleanup = dummy_instance_cleanup;
 }
 
 
@@ -96,7 +96,7 @@ probe_result_t api_probe(api_t self, const char *lib)
     self->handle = handle;
     const int MAX_BYTES = /* Hard-coded max filepath length: */ 1024;
     self->from_which_lib = strndup(lib, MAX_BYTES);
-    self->cleanup = api_instance_clean_up;
+    self->cleanup = api_instance_cleanup;
     return (PROBE_SUCCESS);
 }
 
@@ -111,7 +111,7 @@ struct pkcs11_instance_t {
     instance_cleanup_func_t cleanup;
 };
 
-static void pkcs11_instance_clean_up(void *instance)
+static void pkcs11_instance_cleanup(void *instance)
 {
     pkcs11_t u;
 
@@ -122,7 +122,7 @@ static void pkcs11_instance_clean_up(void *instance)
     /* Then reset each member variable. */
     u.pkcs11->functions = NULL;
     /* Last, relink clean-up function pointer to the dummy one. */
-    u.pkcs11->cleanup = dummy_instance_clean_up;
+    u.pkcs11->cleanup = dummy_instance_cleanup;
 }
 
 probe_result_t pkcs11_probe(pkcs11_t self, const char *lib)
@@ -154,7 +154,7 @@ probe_result_t pkcs11_probe(pkcs11_t self, const char *lib)
     if (!lib) {
         return PROBE_GENERIC_FAILURE;
     }
-    self.pkcs11->cleanup = pkcs11_instance_clean_up;
+    self.pkcs11->cleanup = pkcs11_instance_cleanup;
 
     /* Get the list of the PKCS11 functions this token supports */
     C_GetFunctionList = (CK_C_GetFunctionList) dlsym(self.api->handle, "C_GetFunctionList");
@@ -186,7 +186,7 @@ static void pkcs11_instance_init(struct pkcs11_instance_t *instance)
 
     api_instance_init(&(instance->api));
     instance->functions = NULL;
-    instance->cleanup = dummy_instance_clean_up;
+    instance->cleanup = dummy_instance_cleanup;
 }
 
 pkcs11_t new_pkcs11_instance()
